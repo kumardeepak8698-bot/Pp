@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Workspace Layer Outer Ring (Profile 3) -->
+    <path
+        android:fillColor="#159C27B0"
+        android:strokeColor="#9C27B0"
+        android:strokeWidth="2"
+        android:pathData="M 54 22 A 32 32 0 1 1 54 86 A 32 32 0 1 1 54 22 Z" />
+    <!-- Workspace Layer Inner Circle (Profile 2) -->
+    <path
+        android:fillColor="#25009688"
+        android:strokeColor="#009688"
+        android:strokeWidth="2"
+        android:pathData="M 54 32 A 22 22 0 1 1 54 76 A 22 22 0 1 1 54 32 Z" />
+    <!-- Core Protector Lock body (Profile 1 + Lock) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,42c-4.4,0 -8,3.6 -8,8v4h-2c-1.1,0 -2,0.9 -2,2v10c0,1.1 0.9,2 2,2h20c1.1,0 2,-0.9 2,-2v-10c0,-1.1 -0.9,-2 -2,-2h-2v-4c0,-4.4 -3.6,-8 -8,-8zM54,46c2.2,0 4,1.8 4,4v4h-8v-4c0,-2.2 1.8,-4 4,-4z" />
+</vector>
