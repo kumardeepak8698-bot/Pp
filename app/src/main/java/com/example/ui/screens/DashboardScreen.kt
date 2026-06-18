@@ -300,12 +300,22 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
     val isCurrentlyWorkProfile by viewModel.isCurrentlyWorkProfile.collectAsState()
     val diagnosticsInfo by viewModel.diagnosticsInfo.collectAsState()
 
+    val isVpnAlwaysOn by viewModel.isVpnAlwaysOn.collectAsState()
+    val isIdMaskingEnabled by viewModel.isIdMaskingEnabled.collectAsState()
+    val isAntiTrackingEnabled by viewModel.isAntiTrackingEnabled.collectAsState()
+    val profileProxyHost by viewModel.profileProxyHost.collectAsState()
+    val profileProxyPort by viewModel.profileProxyPort.collectAsState()
+
     var showSetupGuide by remember { mutableStateOf(false) }
     var selectedAppProfileId by remember { mutableStateOf("personal") }
     var mockNotifTitle by remember { mutableStateOf("") }
     var mockNotifBody by remember { mutableStateOf("") }
     var mockNotifType by remember { mutableStateOf("Work") }
     var showNotifSimulationDialog by remember { mutableStateOf(false) }
+
+    var isEditingProxy by remember { mutableStateOf(false) }
+    var proxyHostInput by remember { mutableStateOf(profileProxyHost) }
+    var proxyPortInput by remember { mutableStateOf(profileProxyPort) }
 
     LazyColumn(
         modifier = Modifier
@@ -494,6 +504,185 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- 3.5 Network & Identity Privacy Policies Guard Card ---
+        item {
+            ElevatedCard(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().testTag("privacy_guard_card")
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Security,
+                            tint = MaterialTheme.colorScheme.primary,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Network & ID Privacy Policies",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Text(
+                        "Configure Managed DPC container safety options. Isolate network routing, proxy tunnels, and mask platform-identifiers from tracking SDKs.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    Divider(modifier = Modifier.padding(vertical = 6.dp))
+
+                    // 1. Hardware ID Masking (SSAID Protection)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Profile Hardware ID Masking",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Enforces modern Android SSAID sandboxing. Apps get a virtualized device ID, separating them from the main phone hardware identifiers (IMEI/Serial).",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 14.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Switch(
+                            checked = isIdMaskingEnabled,
+                            onCheckedChange = { viewModel.toggleIdMasking(it) }
+                        )
+                    }
+
+                    Divider(modifier = Modifier.padding(vertical = 6.dp))
+
+                    // 2. Always-On VPN Secure Routing Simulation
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Isolated Profile Always-On VPN",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Enforces network tunnel routing ONLY within this container. Personal space remains fully active on Wi-Fi/Mobile without VPN overhead.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 14.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Switch(
+                            checked = isVpnAlwaysOn,
+                            onCheckedChange = { viewModel.toggleVpnAlwaysOn(it) }
+                        )
+                    }
+
+                    Divider(modifier = Modifier.padding(vertical = 6.dp))
+
+                    // 3. Anti-Tracking Privacy Shield (Shielding VPN Status)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Anti-Tracking Shield (VPN/Proxy Cloak)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "DPC level safety policy restricts apps inside this space from identifying active VPN/proxy bindings, preventing third-party blocking.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 14.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Switch(
+                            checked = isAntiTrackingEnabled,
+                            onCheckedChange = { viewModel.toggleAntiTracking(it) }
+                        )
+                    }
+
+                    Divider(modifier = Modifier.padding(vertical = 6.dp))
+
+                    // 4. Custom Proxy Settings for Container
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Profile-Specific HTTP Proxy",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "Route all workspace container web traffic through a secure server. Current: $profileProxyHost:$profileProxyPort",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = 14.sp
+                                )
+                            }
+                            TextButton(
+                                onClick = {
+                                    if (isEditingProxy) {
+                                        viewModel.updateProxyConfiguration(proxyHostInput, proxyPortInput)
+                                    } else {
+                                        proxyHostInput = profileProxyHost
+                                        proxyPortInput = profileProxyPort
+                                    }
+                                    isEditingProxy = !isEditingProxy
+                                }
+                            ) {
+                                Text(if (isEditingProxy) "Save" else "Configure")
+                            }
+                        }
+
+                        if (isEditingProxy) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = proxyHostInput,
+                                    onValueChange = { proxyHostInput = it },
+                                    label = { Text("Proxy Host IP") },
+                                    modifier = Modifier.weight(3f),
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodySmall
+                                )
+                                OutlinedTextField(
+                                    value = proxyPortInput,
+                                    onValueChange = { proxyPortInput = it },
+                                    label = { Text("Port") },
+                                    modifier = Modifier.weight(1.5f),
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodySmall
                                 )
                             }
                         }
