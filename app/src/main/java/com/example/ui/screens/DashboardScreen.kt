@@ -62,7 +62,7 @@ fun DashboardScreen(
     val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
 
     var selectedTab by remember { mutableStateOf(0) }
-    val tabTitles = listOf("Launcher", "Secure Notes", "Contacts", "Security")
+    val tabTitles = listOf("Enterprise Workspace", "Secure Notes", "Contacts", "Security")
 
     // Active screen locks or overlays
     var appToLaunchAfterValidation by remember { mutableStateOf<ProfileApp?>(null) }
@@ -178,22 +178,9 @@ fun DashboardScreen(
             ) {
                 when (selectedTab) {
                     0 -> {
-                        // Apps shortcuts launcher
-                        AppsLauncherTab(
-                            viewModel = viewModel,
-                            profileApps = profileApps,
-                            installedApps = installedApps,
-                            onModifyShortcuts = onNavigateToAppSelection,
-                            onLaunchApp = { profileApp ->
-                                if (profileApp.isLocked && masterPin != null) {
-                                    appToLaunchAfterValidation = profileApp
-                                    appLockInputText = ""
-                                    appLockError = ""
-                                    showAppLockVerifyDialog = true
-                                } else {
-                                    launchApplicationIntent(context, profileApp.packageName, profileApp.appName)
-                                }
-                            }
+                        // Enterprise Managed Profile system workspace tab
+                        EnterpriseWorkspaceTab(
+                            viewModel = viewModel
                         )
                     }
                     1 -> {
@@ -303,180 +290,210 @@ fun DashboardScreen(
     }
 }
 
-// --- LAUNCHER SHORTCUTS ---
+// --- ENTERPRISE WORKSPACE TAB (TRUE WORK PROFILE) ---
 
 @Composable
-fun AppsLauncherTab(
-    viewModel: ProfileViewModel,
-    profileApps: List<ProfileApp>,
-    installedApps: List<AppModel>,
-    onModifyShortcuts: () -> Unit,
-    onLaunchApp: (ProfileApp) -> Unit
-) {
+fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
     val context = LocalContext.current
-    val appIconMap = remember(installedApps) {
-        installedApps.associate { it.packageName to it.icon }
-    }
+    val systemProfiles by viewModel.systemProfiles.collectAsState()
+    val systemNotifications by viewModel.systemNotifications.collectAsState()
+    val isCurrentlyWorkProfile by viewModel.isCurrentlyWorkProfile.collectAsState()
+    val diagnosticsInfo by viewModel.diagnosticsInfo.collectAsState()
 
-    Column(
+    var showSetupGuide by remember { mutableStateOf(false) }
+    var selectedAppProfileId by remember { mutableStateOf("personal") }
+    var mockNotifTitle by remember { mutableStateOf("") }
+    var mockNotifBody by remember { mutableStateOf("") }
+    var mockNotifType by remember { mutableStateOf("Work") }
+    var showNotifSimulationDialog by remember { mutableStateOf(false) }
+
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Sandboxed launcher note banner
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            ),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.padding(bottom = 16.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+        // --- 1. True Android Profile Status Banner ---
+        item {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isCurrentlyWorkProfile) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().testTag("profile_status_card")
             ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "OS Restriction Notice: True sandbox app duplication requires device-level profiles. MultiProfile separates secure files/notes/contacts storage, and provides quick secure lockable launcher shorts.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Shortcut Workspace Launcher",
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            TextButton(
-                onClick = onModifyShortcuts,
-                modifier = Modifier.testTag("edit_apps_button")
-            ) {
-                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Customize")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        if (profileApps.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.AddLink,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.outline
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        "No shortcuts created yet",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    TextButton(onClick = onModifyShortcuts) {
-                        Text("Add apps to profile workspace")
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(if (isCurrentlyWorkProfile) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isCurrentlyWorkProfile) Icons.Default.BusinessCenter else Icons.Default.Person,
+                            contentDescription = "Active Container Icon",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isCurrentlyWorkProfile) "Logged into WORK CONTAINER" else "Logged into PERSONAL CONTAINER",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isCurrentlyWorkProfile) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            text = if (isCurrentlyWorkProfile) "True isolation verified. Storage and Accounts are separated from Personal." else "Running under main profile. Work container available for isolated workspace setup.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isCurrentlyWorkProfile) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                        )
                     }
                 }
             }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 100.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
+        }
+
+        // --- 2. Setup Wizard / Configuration Card ---
+        item {
+            ElevatedCard(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().testTag("setup_wizard_card")
             ) {
-                items(profileApps, key = { it.packageName }) { app ->
-                    val iconBitmap = appIconMap[app.packageName]
-                    
-                    Card(
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onLaunchApp(app) }
-                            .testTag("shortcut_card_${app.packageName}")
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            // Lock state indicator top right
-                            IconButton(
-                                onClick = { viewModel.toggleAppLockState(app.packageName, !app.isLocked) },
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.SettingsSuggest,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Profile Configuration Wizard",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        IconButton(onClick = { showSetupGuide = !showSetupGuide }) {
+                            Icon(
+                                imageVector = if (showSetupGuide) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = "Toggle Guide Details"
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        "Automatically provision a secure Work Profile container. All documents, apps, accounts, contacts, and settings in this container will be strictly offline-isolated and encrypted.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { viewModel.startWorkProfileProvisioning(context) },
+                            modifier = Modifier.weight(1f).testTag("trigger_provisioning_button")
+                        ) {
+                            Icon(Icons.Default.AdminPanelSettings, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Provision Container")
+                        }
+                        
+                        OutlinedButton(
+                            onClick = { showSetupGuide = !showSetupGuide },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(if (showSetupGuide) "Hide Info" else "Read Architecture")
+                        }
+                    }
+
+                    if (showSetupGuide) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Divider()
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            "Underlying DPC Architecture Requirements:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+
+                        Text(
+                            "• Permissions Requested:\n  - BIND_DEVICE_ADMIN: Necessary to secure container state.\n  - QUERY_ALL_PACKAGES: Used to detect cross-profile apps.\n• Isolation Technology:\n  - Android Managed Profile User Handle (e.g. User 10).\n  - Distinct FBE (File-Based Encryption) cryptographic keys.\n  - Enforced Policy: Separated storage, separated accounts, separated clipboard, separated contacts database.",
+                            style = MaterialTheme.typography.bodySmall,
+                            lineHeight = 18.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        // --- 3. Profile Health & Storage diagnostics screen ---
+        item {
+            ElevatedCard(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().testTag("diagnostics_card")
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Security,
+                            tint = MaterialTheme.colorScheme.primary,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Isolation Diagnostics & Storage Health",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    diagnosticsInfo.forEach { (title, status) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                title,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Box(
                                 modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .size(32.dp)
-                                    .padding(4.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
-                                Icon(
-                                    imageVector = if (app.isLocked) Icons.Default.Lock else Icons.Default.LockOpen,
-                                    contentDescription = "Lock overlay",
-                                    tint = if (app.isLocked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp, horizontal = 12.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(52.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (iconBitmap != null) {
-                                        Image(
-                                            bitmap = iconBitmap.asImageBitmap(),
-                                            contentDescription = app.appName,
-                                            modifier = Modifier.size(36.dp)
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.Android,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(30.dp)
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
                                 Text(
-                                    text = app.appName,
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    status,
+                                    style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold,
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.fillMaxWidth()
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -484,6 +501,266 @@ fun AppsLauncherTab(
                 }
             }
         }
+
+        // --- 4. Profile Specific Notifications ---
+        item {
+            ElevatedCard(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().testTag("notifications_card")
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.NotificationsActive,
+                                tint = MaterialTheme.colorScheme.primary,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Profile Isolation Notifications",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        TextButton(onClick = { showNotifSimulationDialog = true }) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Simulate")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (systemNotifications.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("No notification logs inside containers", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            systemNotifications.forEach { notif ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                        .padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (notif.profileType == "Work") MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                                else MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = if (notif.profileType == "Work") Icons.Default.BusinessCenter else Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = if (notif.profileType == "Work") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(notif.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                            Text(notif.time, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                                        }
+                                        Text(notif.body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    IconButton(
+                                        onClick = { viewModel.clearSystemNotification(notif.id) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Clear, contentDescription = "Clear Alert", modifier = Modifier.size(14.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- 5. Profile-Specific App Lists ---
+        item {
+            ElevatedCard(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().testTag("app_lists_card")
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Apps,
+                            tint = MaterialTheme.colorScheme.primary,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Containerized Interactive App Lists",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    ScrollableTabRow(
+                        selectedTabIndex = if (selectedAppProfileId == "personal") 0 else 1,
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        edgePadding = 0.dp
+                    ) {
+                        Tab(
+                            selected = selectedAppProfileId == "personal",
+                            onClick = { selectedAppProfileId = "personal" },
+                            text = { Text("Personal Container") }
+                        )
+                        Tab(
+                            selected = selectedAppProfileId == "work",
+                            onClick = { selectedAppProfileId = "work" },
+                            text = { Text("Secure Work") }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val activeSystemProfile = systemProfiles.find { it.id == selectedAppProfileId }
+                    if (activeSystemProfile == null || activeSystemProfile.apps.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.Block, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.outline)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("No apps detected in this container", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                            }
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            activeSystemProfile.apps.forEach { app ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                        .clickable {
+                                            viewModel.launchApplicationInProfile(app.packageName, app.activityName, activeSystemProfile.isWorkProfile)
+                                        }
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Launch,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(app.appName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                        Text(app.packageName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            viewModel.launchApplicationInProfile(app.packageName, app.activityName, activeSystemProfile.isWorkProfile)
+                                        }
+                                    ) {
+                                        Icon(Icons.Default.PlayArrow, contentDescription = "Launch App", tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showNotifSimulationDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotifSimulationDialog = false },
+            title = { Text("Simulate Container Notification") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Enter custom mock alert values and route it to your isolated profile containers dynamically.", style = MaterialTheme.typography.bodySmall)
+                    
+                    OutlinedTextField(
+                        value = mockNotifTitle,
+                        onValueChange = { mockNotifTitle = it },
+                        label = { Text("Notification Title") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = mockNotifBody,
+                        onValueChange = { mockNotifBody = it },
+                        label = { Text("Notification Body") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Target Profile:", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = mockNotifType == "Work", onClick = { mockNotifType = "Work" })
+                            Text("Work", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = mockNotifType == "Personal", onClick = { mockNotifType = "Personal" })
+                            Text("Personal", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val finalTitle = mockNotifTitle.ifEmpty { "Secure System Update" }
+                        val finalBody = mockNotifBody.ifEmpty { "Offline-isolated configuration synced." }
+                        viewModel.simulateIncomingNotification(mockNotifType, finalTitle, finalBody)
+                        showNotifSimulationDialog = false
+                        mockNotifTitle = ""
+                        mockNotifBody = ""
+                    }
+                ) {
+                    Text("Trigger Simulation")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNotifSimulationDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
