@@ -36,7 +36,7 @@ fun ProfileSelectionScreen(
     onProfileSelected: (Profile) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val profiles by viewModel.allProfiles.collectAsState()
+    val profiles by viewModel.activeProfiles.collectAsState()
     
     var showAddDialog by remember { mutableStateOf(false) }
     var editingProfile by remember { mutableStateOf<Profile?>(null) }
@@ -55,16 +55,6 @@ fun ProfileSelectionScreen(
                     containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
                 )
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.testTag("add_profile_fab")
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add New Profile")
-            }
         },
         modifier = modifier
     ) { innerPadding ->

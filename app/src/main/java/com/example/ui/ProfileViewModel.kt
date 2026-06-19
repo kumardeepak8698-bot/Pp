@@ -66,6 +66,17 @@ class ProfileViewModel(
     private val _systemProfiles = MutableStateFlow<List<SystemUserProfile>>(emptyList())
     val systemProfiles: StateFlow<List<SystemUserProfile>> = _systemProfiles.asStateFlow()
 
+    val activeProfiles: StateFlow<List<Profile>> = combine(allProfiles, systemProfiles) { dbProfiles, sysProfiles ->
+        val hasWork = sysProfiles.any { it.isWorkProfile }
+        dbProfiles.filter { dbProfile ->
+            if (dbProfile.iconName == "work" || dbProfile.name.contains("Work", ignoreCase = true) || dbProfile.id == 2) {
+                hasWork
+            } else {
+                dbProfile.iconName == "face" || dbProfile.name.contains("Personal", ignoreCase = true) || dbProfile.id == 1
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val _systemNotifications = MutableStateFlow<List<SystemNotification>>(emptyList())
     val systemNotifications: StateFlow<List<SystemNotification>> = _systemNotifications.asStateFlow()
 
@@ -76,8 +87,7 @@ class ProfileViewModel(
     val isVirtualSandboxActive: StateFlow<Boolean> = _isVirtualSandboxActive.asStateFlow()
 
     fun toggleVirtualSandboxMode(enabled: Boolean) {
-        _isVirtualSandboxActive.value = enabled
-        loadWorkProfileData()
+        // Safe no-op to disable sandbox mode
     }
 
     private val _diagnosticsInfo = MutableStateFlow<Map<String, String>>(emptyMap())
@@ -147,9 +157,9 @@ class ProfileViewModel(
                 if (profiles.isNotEmpty() && _currentProfile.value == null) {
                     selectProfile(profiles.first())
                 } else if (profiles.isEmpty() && repository.hasBeenInitialized().not()) {
-                    // Create default Profile 1, Profile 2
-                    createProfile("Profile 1", "face", 0xFF6200EE)
-                    createProfile("Profile 2", "work", 0xFF03DAC6)
+                    // Create default Personal Container and Secure Work
+                    createProfile("Personal Container", "face", 0xFF6200EE)
+                    createProfile("Secure Work", "work", 0xFF03DAC6)
                     repository.markInitialized()
                 }
             }
@@ -359,9 +369,9 @@ class ProfileViewModel(
     fun loadWorkProfileData() {
         viewModelScope.launch {
             val isCurrentWork = try {
-                _isVirtualSandboxActive.value || userManager.isManagedProfile()
+                userManager.isManagedProfile()
             } catch (e: Exception) {
-                _isVirtualSandboxActive.value
+                false
             }
             _isCurrentlyWorkProfile.value = isCurrentWork
 
@@ -398,7 +408,6 @@ class ProfileViewModel(
                         }
                     }
                     val isCur = (handle == currentHandle)
-                    val label = if (isWork) "Work Profile Workspace Name" else "Personal Primary Workspace Name"
                     
                     val appActivities = launcherApps.getActivityList(null, handle)
                     val profileApps = appActivities.map { activity ->
@@ -434,14 +443,11 @@ class ProfileViewModel(
             }
 
             val hasPersonal = profileList.any { !it.isWorkProfile }
-            val hasWork = profileList.any { it.isWorkProfile }
 
             if (!hasPersonal) {
                 val mockAppsPersonal = listOf(
                     ProfileAppModel("com.android.chrome", "Google Chrome", "com.google.android.apps.chrome.Main"),
-                    ProfileAppModel("com.android.settings", "Settings", "com.android.settings.Settings"),
-                    ProfileAppModel("com.google.android.youtube", "YouTube", "com.google.android.youtube.MainActivity"),
-                    ProfileAppModel("com.android.contacts", "Contacts", "com.android.contacts.activities.PeopleActivity")
+                    ProfileAppModel("com.android.settings", "Settings", "com.android.settings.Settings")
                 )
                 profileList.add(
                     0,
@@ -460,37 +466,13 @@ class ProfileViewModel(
                 )
             }
 
-            if (!hasWork) {
-                val mockAppsWork = listOf(
-                    ProfileAppModel("com.android.chrome", "Chrome (Secure Work Tab)", "com.google.android.apps.chrome.Main"),
-                    ProfileAppModel("com.android.contacts", "Contacts (Work Directory)", "com.android.contacts.activities.PeopleActivity"),
-                    ProfileAppModel("com.android.email", "Enterprise Mail Client", "com.android.email.activity.Welcome")
-                )
-                profileList.add(
-                    SystemUserProfile(
-                        id = "work",
-                        name = "Work Profile Container",
-                        isWorkProfile = true,
-                        isCurrent = isCurrentWork,
-                        status = "True Work Security Vault Running",
-                        appCount = mockAppsWork.size,
-                        storageUsage = "2.4 GB",
-                        lastSyncTime = "Real-time state synced",
-                        securityLevel = "AES-256 FBE Hardware Encrypted & Managed",
-                        apps = mockAppsWork
-                    )
-                )
-            }
-
             _systemProfiles.value = profileList
 
             updateDiagnostics()
 
             if (_systemNotifications.value.isEmpty()) {
                 _systemNotifications.value = listOf(
-                    SystemNotification(1, "Personal", "Default Updates Ready", "Google Play Store has a security patch for 4 apps.", "10 mins ago"),
-                    SystemNotification(2, "Work", "Enterprise Sync Completed", "Work space security policy successfully applied.", "1 hour ago"),
-                    SystemNotification(3, "Work", "Encrypted Message", "Confidential memo file saved inside encrypted database.", "2 hours ago")
+                    SystemNotification(1, "Personal", "Default Updates Ready", "Google Play Store has a security patch for 4 apps.", "10 mins ago")
                 )
             }
         }

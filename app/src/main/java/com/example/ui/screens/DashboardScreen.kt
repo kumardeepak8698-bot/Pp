@@ -298,7 +298,6 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
     val systemProfiles by viewModel.systemProfiles.collectAsState()
     val systemNotifications by viewModel.systemNotifications.collectAsState()
     val isCurrentlyWorkProfile by viewModel.isCurrentlyWorkProfile.collectAsState()
-    val isVirtualSandboxActive by viewModel.isVirtualSandboxActive.collectAsState()
     val diagnosticsInfo by viewModel.diagnosticsInfo.collectAsState()
 
     val isVpnAlwaysOn by viewModel.isVpnAlwaysOn.collectAsState()
@@ -308,7 +307,6 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
     val profileProxyPort by viewModel.profileProxyPort.collectAsState()
 
     var showSetupGuide by remember { mutableStateOf(false) }
-    var showProvisioningChoiceDialog by remember { mutableStateOf(false) }
     var selectedAppProfileId by remember { mutableStateOf("personal") }
     var mockNotifTitle by remember { mutableStateOf("") }
     var mockNotifBody by remember { mutableStateOf("") }
@@ -366,23 +364,6 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
                             color = if (isCurrentlyWorkProfile) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                         )
                     }
-                    if (isVirtualSandboxActive) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        IconButton(
-                            onClick = {
-                                viewModel.toggleVirtualSandboxMode(!isCurrentlyWorkProfile)
-                                val text = if (!isCurrentlyWorkProfile) "Switched to Secure Work Workspace Partition" else "Returned to Personal Primary Workspace"
-                                Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
-                            },
-                            modifier = Modifier.testTag("workspace_quick_switch")
-                        ) {
-                            Icon(
-                                imageVector = if (isCurrentlyWorkProfile) Icons.Default.ExitToApp else Icons.Default.BusinessCenter,
-                                contentDescription = "Switch Workspace Container",
-                                tint = if (isCurrentlyWorkProfile) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -436,7 +417,7 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
-                            onClick = { showProvisioningChoiceDialog = true },
+                            onClick = { viewModel.startWorkProfileProvisioning(context) },
                             modifier = Modifier.weight(1f).testTag("trigger_provisioning_button")
                         ) {
                             Icon(Icons.Default.AdminPanelSettings, contentDescription = null)
@@ -571,55 +552,7 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
                             lineHeight = 14.sp
                         )
 
-                        Spacer(modifier = Modifier.height(12.dp))
 
-                        // Universal Fallback Toggle
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.VerifiedUser,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        contentDescription = null
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        "Seamless Virtual Sandbox Override",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    "If your device doesn't support system work profiles, you don't need a corporate setup! This app can switch to a local Secure Virtual Partition that isolates contacts, secure proxy routings, anti-track tools, and encrypted vaults directly inside our encrypted storage databases locally on your device.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    lineHeight = 15.sp,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                )
-                                Button(
-                                    onClick = {
-                                        viewModel.toggleVirtualSandboxMode(true)
-                                        Toast.makeText(context, "Virtual Local Workspace Mode Activated! Offline databases & Proxies are now isolated locally.", Toast.LENGTH_LONG).show()
-                                        viewModel.simulateIncomingNotification("Work", "Sandbox Local Mode", "Local Isolated Sandbox Partition simulated successfully.")
-                                    },
-                                    modifier = Modifier.fillMaxWidth().testTag("sandbox_override_button"),
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                                ) {
-                                    Text("Activate Virtual Local Sandbox", style = MaterialTheme.typography.bodySmall)
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -1008,7 +941,13 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(Icons.Default.Block, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.outline)
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("No apps detected in this container", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                                Text(
+                                    if (selectedAppProfileId == "work") "Work Profile is not provisioned or configured yet. Complete the Profile Configuration Wizard to enable." else "No apps detected in this container",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
                             }
                         }
                     } else {
@@ -1120,121 +1059,7 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
         )
     }
 
-    if (showProvisioningChoiceDialog) {
-        AlertDialog(
-            onDismissRequest = { showProvisioningChoiceDialog = false },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.AdminPanelSettings,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Workspace Partition Setup",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        "Custom systems (such as Realme UI, ColorOS, MIUI) actively block native Google Work Profile triggers, throwing administrative block errors, and the AI Studio emulator is also locked. Choose your bypass route below:",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
 
-                    // Card for Method B (Recommended)
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(12.dp))
-                            .clickable {
-                                viewModel.toggleVirtualSandboxMode(true)
-                                showProvisioningChoiceDialog = false
-                                Toast.makeText(context, "Virtual Secure Workspace Mode Activated! Offline databases & Proxies are now isolated locally.", Toast.LENGTH_LONG).show()
-                                viewModel.simulateIncomingNotification("Work", "Sandbox Virtual Mode", "Universal Bypass Mode successfully set up.")
-                            }
-                            .testTag("choice_virtual_sandbox_button")
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.VerifiedUser,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    "Method B: Zero-Config Private Sandbox",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                "UNIVERSAL BYPASS: Works automatically on Realme, Xiaomi, Oppo, and Emulators! Instantly isolates data, proxies, anti-tracking, files, and contacts locally in a secure DB sandbox without complex OS-level requirements.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 14.sp
-                            )
-                        }
-                    }
-
-                    // Card for Method A
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                showProvisioningChoiceDialog = false
-                                viewModel.startWorkProfileProvisioning(context)
-                            }
-                            .testTag("choice_native_provisioning_button")
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.BusinessCenter,
-                                    tint = MaterialTheme.colorScheme.outline,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    "Method A: Android System Work Profile",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                "Native Google Device Policy provisioning. Partitions OS resource handles at firmware root level. May block on custom ROMs with cloner apps enabled.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 14.sp
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showProvisioningChoiceDialog = false }) {
-                    Text("Close")
-                }
-            }
-        )
-    }
 }
 
 fun launchApplicationIntent(context: Context, packageName: String, appName: String) {
