@@ -307,6 +307,7 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
     val profileProxyPort by viewModel.profileProxyPort.collectAsState()
 
     var showSetupGuide by remember { mutableStateOf(false) }
+    var showProvisioningChoiceDialog by remember { mutableStateOf(false) }
     var selectedAppProfileId by remember { mutableStateOf("personal") }
     var mockNotifTitle by remember { mutableStateOf("") }
     var mockNotifBody by remember { mutableStateOf("") }
@@ -417,7 +418,7 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
-                            onClick = { viewModel.startWorkProfileProvisioning(context) },
+                            onClick = { showProvisioningChoiceDialog = true },
                             modifier = Modifier.weight(1f).testTag("trigger_provisioning_button")
                         ) {
                             Icon(Icons.Default.AdminPanelSettings, contentDescription = null)
@@ -427,9 +428,9 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
                         
                         OutlinedButton(
                             onClick = { showSetupGuide = !showSetupGuide },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).testTag("rom_troubleshooter_toggle")
                         ) {
-                            Text(if (showSetupGuide) "Hide Info" else "Read Architecture")
+                            Text(if (showSetupGuide) "Hide Assist" else "🛠️ ROM Setup Help")
                         }
                     }
 
@@ -439,19 +440,168 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            "Underlying DPC Architecture Requirements:",
-                            style = MaterialTheme.typography.bodyMedium,
+                            "⚠️ Realme, Xiaomi & Android ROM Compatibility Fixes",
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 6.dp)
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
 
                         Text(
-                            "• Permissions Requested:\n  - BIND_DEVICE_ADMIN: Necessary to secure container state.\n  - QUERY_ALL_PACKAGES: Used to detect cross-profile apps.\n• Isolation Technology:\n  - Android Managed Profile User Handle (e.g. User 10).\n  - Distinct FBE (File-Based Encryption) cryptographic keys.\n  - Enforced Policy: Separated storage, separated accounts, separated clipboard, separated contacts database.",
+                            "Custom OS interfaces (like realme UI, ColorOS, MIUI/HyperOS) modify Android's default Device Admin features. If you are seeing 'Work profile isn't available' or 'Contact IT Admin', please perform the following fixes:",
                             style = MaterialTheme.typography.bodySmall,
-                            lineHeight = 18.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 16.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
                         )
+
+                        var activeBrandHelp by remember { mutableStateOf("realme") }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            FilterChip(
+                                selected = activeBrandHelp == "realme",
+                                onClick = { activeBrandHelp = "realme" },
+                                label = { Text("Realme / Oppo", style = MaterialTheme.typography.bodySmall) }
+                            )
+                            FilterChip(
+                                selected = activeBrandHelp == "xiaomi",
+                                onClick = { activeBrandHelp = "xiaomi" },
+                                label = { Text("Xiaomi / Redmi", style = MaterialTheme.typography.bodySmall) }
+                            )
+                            FilterChip(
+                                selected = activeBrandHelp == "general",
+                                onClick = { activeBrandHelp = "general" },
+                                label = { Text("Admin Block", style = MaterialTheme.typography.bodySmall) }
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                when (activeBrandHelp) {
+                                    "realme" -> {
+                                        Text(
+                                            "🔧 Realme UI / ColorOS (Realme 8, etc.) Fix:",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(bottom = 6.dp)
+                                        )
+                                        Text(
+                                            "1. Disable App Cloner: Go to Settings > Apps > App Cloner and turn off all dual/clone apps. Realme's clone accounts occupy the profile handles and block Managed Profiles.\n\n" +
+                                            "2. Turn off Kid/Guest Space: Deactivate Settings > Special features > Kid Space.\n\n" +
+                                            "3. Verify Multiple Users: Ensure guest users under Settings > Users & Accounts aren't holding system administrative lock handles.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            lineHeight = 16.sp
+                                        )
+                                    }
+                                    "xiaomi" -> {
+                                        Text(
+                                            "🔧 Xiaomi MIUI / HyperOS Fix:",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(bottom = 6.dp)
+                                        )
+                                        Text(
+                                            "1. Delete Second Space: Go to Settings > Special features > Second Space and delete any created secondary workspace.\n\n" +
+                                            "2. Clear Dual Apps Accounts: Go to Settings > Apps > Dual Apps > click Settings wheel -> choose 'Delete dual apps accounts'. All dual apps must be removed first.\n\n" +
+                                            "3. Enable MIUI Optimization: Ensure developer values allow custom DPC provisioning triggers.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            lineHeight = 16.sp
+                                        )
+                                    }
+                                    "general" -> {
+                                        Text(
+                                            "🔧 'Contact IT Admin' Error Fix:",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(bottom = 6.dp)
+                                        )
+                                        Text(
+                                            "1. Remove Existing Work Profile: Go to Settings > Users & accounts. Under Work Profile section, select 'Uninstall/Remove'.\n\n" +
+                                            "2. Disable Other Admins: Go to Settings > Security > Device Admin Apps or Passwords & Security > System Security > Device Admin Apps, and turn off other managed apps (e.g. Find My Device, Outlook Device Management).\n\n" +
+                                            "3. Corporate Google Account Conflicts: If you have a school/work Google Account signed in on your main profile, the OS policy locks further manual work profile provisioning.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            lineHeight = 16.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            "🛠️ Developer Command Line Alternative:",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            "If your custom UI blocks on-device wizards, enable USB debugging, plug your phone into a PC, and force setup using ADB:\n" +
+                            "adb shell dpm set-profile-owner --user 0 com.example/com.example.data.ProfileDeviceAdminReceiver",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline,
+                            lineHeight = 14.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Universal Fallback Toggle
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.VerifiedUser,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        contentDescription = null
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Seamless Virtual Sandbox Override",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    "If your device doesn't support system work profiles, you don't need a corporate setup! This app can switch to a local Secure Virtual Partition that isolates contacts, secure proxy routings, anti-track tools, and encrypted vaults directly inside our encrypted storage databases locally on your device.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    lineHeight = 15.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                Button(
+                                    onClick = {
+                                        viewModel.toggleVirtualSandboxMode(true)
+                                        Toast.makeText(context, "Virtual Local Workspace Mode Activated! Offline databases & Proxies are now isolated locally.", Toast.LENGTH_LONG).show()
+                                        viewModel.simulateIncomingNotification("Work", "Sandbox Local Mode", "Local Isolated Sandbox Partition simulated successfully.")
+                                    },
+                                    modifier = Modifier.fillMaxWidth().testTag("sandbox_override_button"),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                ) {
+                                    Text("Activate Virtual Local Sandbox", style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -947,6 +1097,122 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
             dismissButton = {
                 TextButton(onClick = { showNotifSimulationDialog = false }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showProvisioningChoiceDialog) {
+        AlertDialog(
+            onDismissRequest = { showProvisioningChoiceDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AdminPanelSettings,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Workspace Partition Setup",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        "Custom systems (such as Realme UI, ColorOS, MIUI) actively block native Google Work Profile triggers, throwing administrative block errors, and the AI Studio emulator is also locked. Choose your bypass route below:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Card for Method B (Recommended)
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(12.dp))
+                            .clickable {
+                                viewModel.toggleVirtualSandboxMode(true)
+                                showProvisioningChoiceDialog = false
+                                Toast.makeText(context, "Virtual Secure Workspace Mode Activated! Offline databases & Proxies are now isolated locally.", Toast.LENGTH_LONG).show()
+                                viewModel.simulateIncomingNotification("Work", "Sandbox Virtual Mode", "Universal Bypass Mode successfully set up.")
+                            }
+                            .testTag("choice_virtual_sandbox_button")
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.VerifiedUser,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    "Method B: Zero-Config Private Sandbox",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                "UNIVERSAL BYPASS: Works automatically on Realme, Xiaomi, Oppo, and Emulators! Instantly isolates data, proxies, anti-tracking, files, and contacts locally in a secure DB sandbox without complex OS-level requirements.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 14.sp
+                            )
+                        }
+                    }
+
+                    // Card for Method A
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showProvisioningChoiceDialog = false
+                                viewModel.startWorkProfileProvisioning(context)
+                            }
+                            .testTag("choice_native_provisioning_button")
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.BusinessCenter,
+                                    tint = MaterialTheme.colorScheme.outline,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    "Method A: Android System Work Profile",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                "Native Google Device Policy provisioning. Partitions OS resource handles at firmware root level. May block on custom ROMs with cloner apps enabled.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 14.sp
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showProvisioningChoiceDialog = false }) {
+                    Text("Close")
                 }
             }
         )

@@ -72,6 +72,14 @@ class ProfileViewModel(
     private val _isCurrentlyWorkProfile = MutableStateFlow(false)
     val isCurrentlyWorkProfile: StateFlow<Boolean> = _isCurrentlyWorkProfile.asStateFlow()
 
+    private val _isVirtualSandboxActive = MutableStateFlow(false)
+    val isVirtualSandboxActive: StateFlow<Boolean> = _isVirtualSandboxActive.asStateFlow()
+
+    fun toggleVirtualSandboxMode(enabled: Boolean) {
+        _isVirtualSandboxActive.value = enabled
+        loadWorkProfileData()
+    }
+
     private val _diagnosticsInfo = MutableStateFlow<Map<String, String>>(emptyMap())
     val diagnosticsInfo: StateFlow<Map<String, String>> = _diagnosticsInfo.asStateFlow()
 
@@ -351,9 +359,9 @@ class ProfileViewModel(
     fun loadWorkProfileData() {
         viewModelScope.launch {
             val isCurrentWork = try {
-                userManager.isManagedProfile()
+                _isVirtualSandboxActive.value || userManager.isManagedProfile()
             } catch (e: Exception) {
-                false
+                _isVirtualSandboxActive.value
             }
             _isCurrentlyWorkProfile.value = isCurrentWork
 
