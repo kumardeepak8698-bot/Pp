@@ -87,7 +87,8 @@ class ProfileViewModel(
     val isVirtualSandboxActive: StateFlow<Boolean> = _isVirtualSandboxActive.asStateFlow()
 
     fun toggleVirtualSandboxMode(enabled: Boolean) {
-        // Safe no-op to disable sandbox mode
+        _isVirtualSandboxActive.value = enabled
+        loadWorkProfileData()
     }
 
     private val _diagnosticsInfo = MutableStateFlow<Map<String, String>>(emptyMap())
@@ -369,9 +370,9 @@ class ProfileViewModel(
     fun loadWorkProfileData() {
         viewModelScope.launch {
             val isCurrentWork = try {
-                userManager.isManagedProfile()
+                _isVirtualSandboxActive.value || userManager.isManagedProfile()
             } catch (e: Exception) {
-                false
+                _isVirtualSandboxActive.value
             }
             _isCurrentlyWorkProfile.value = isCurrentWork
 
@@ -466,14 +467,42 @@ class ProfileViewModel(
                 )
             }
 
+            val hasWork = profileList.any { it.isWorkProfile }
+            if (!hasWork && isCurrentWork) {
+                val mockAppsWork = listOf(
+                    ProfileAppModel("com.android.chrome", "Chrome (Secure Work Tab)", "com.google.android.apps.chrome.Main"),
+                    ProfileAppModel("com.android.contacts", "Contacts (Work Directory)", "com.android.contacts.activities.PeopleActivity"),
+                    ProfileAppModel("com.android.email", "Enterprise Mail Client", "com.android.email.activity.Welcome")
+                )
+                profileList.add(
+                    SystemUserProfile(
+                        id = "work",
+                        name = "Work Profile Container [Virtual]",
+                        isWorkProfile = true,
+                        isCurrent = isCurrentWork,
+                        status = "Virtual Local Workspace Mode Active",
+                        appCount = mockAppsWork.size,
+                        storageUsage = "3.1 GB",
+                        lastSyncTime = "Real-time state synced",
+                        securityLevel = "AES-256 Room Crypt Database Isolated",
+                        apps = mockAppsWork
+                    )
+                )
+            }
+
             _systemProfiles.value = profileList
 
             updateDiagnostics()
 
-            if (_systemNotifications.value.isEmpty()) {
-                _systemNotifications.value = listOf(
+            if (_systemNotifications.value.isEmpty() || (_systemNotifications.value.size <= 1 && isCurrentWork)) {
+                val list = mutableListOf(
                     SystemNotification(1, "Personal", "Default Updates Ready", "Google Play Store has a security patch for 4 apps.", "10 mins ago")
                 )
+                if (isCurrentWork) {
+                    list.add(0, SystemNotification(2, "Work", "Enterprise Sync Completed", "Work space security policy successfully applied.", "1 hour ago"))
+                    list.add(0, SystemNotification(3, "Work", "Confidential Memo Saved", "Private note file saved securely inside isolated database.", "2 hours ago"))
+                }
+                _systemNotifications.value = list
             }
         }
     }

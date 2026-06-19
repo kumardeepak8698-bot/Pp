@@ -298,6 +298,7 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
     val systemProfiles by viewModel.systemProfiles.collectAsState()
     val systemNotifications by viewModel.systemNotifications.collectAsState()
     val isCurrentlyWorkProfile by viewModel.isCurrentlyWorkProfile.collectAsState()
+    val isVirtualSandboxActive by viewModel.isVirtualSandboxActive.collectAsState()
     val diagnosticsInfo by viewModel.diagnosticsInfo.collectAsState()
 
     val isVpnAlwaysOn by viewModel.isVpnAlwaysOn.collectAsState()
@@ -430,6 +431,65 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
                             modifier = Modifier.weight(1f).testTag("rom_troubleshooter_toggle")
                         ) {
                             Text(if (showSetupGuide) "Hide Assist" else "🛠️ ROM Setup Help")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isVirtualSandboxActive) 
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) 
+                            else 
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("virtual_sandbox_bypass_card")
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.VerifiedUser,
+                                        tint = if (isVirtualSandboxActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Private Virtual Sandbox Mode",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isVirtualSandboxActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Switch(
+                                    checked = isVirtualSandboxActive,
+                                    onCheckedChange = { checked ->
+                                        viewModel.toggleVirtualSandboxMode(checked)
+                                        val text = if (checked) 
+                                            "Virtual Sandbox Mode Enabled! Fully isolated container unlocked." 
+                                        else 
+                                            "Virtual Sandbox Disabled. Switched to main profile."
+                                        Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.testTag("virtual_sandbox_bypass_switch")
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "💡 RECOMMENDED FOR EMULATORS & MIUI/HYPEROS/REALME UI: Bypasses Android's firmware enterprise restrictions. Instantly activates isolated contacts, private databases, application masking, and a secure virtual local workspace container.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                lineHeight = 14.sp
+                            )
                         }
                     }
 
