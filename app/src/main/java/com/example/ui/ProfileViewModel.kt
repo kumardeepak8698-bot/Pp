@@ -365,6 +365,20 @@ class ProfileViewModel(
             }
             _isCurrentlyWorkProfile.value = isCurrentWork
 
+            // Auto-switch Room DB Partition when work profile is active or inactive
+            val currentProfiles = allProfiles.value
+            if (currentProfiles.isNotEmpty()) {
+                val targetProfile = if (isCurrentWork) {
+                    currentProfiles.find { it.iconName == "work" || it.name.contains("Work", ignoreCase = true) || it.id == 2 } ?: currentProfiles.firstOrNull()
+                } else {
+                    currentProfiles.find { it.iconName == "face" || it.name.contains("Personal", ignoreCase = true) || it.id == 1 } ?: currentProfiles.firstOrNull()
+                }
+                if (targetProfile != null) {
+                    _currentProfile.value = targetProfile
+                    observeProfileIsolatedData(targetProfile.id)
+                }
+            }
+
             val profileList = mutableListOf<SystemUserProfile>()
             val currentHandle = android.os.Process.myUserHandle()
             
@@ -512,6 +526,7 @@ class ProfileViewModel(
         
         val intent = Intent(DevicePolicyManager.ACTION_PROVISION_MANAGED_PROFILE).apply {
             putExtra(DevicePolicyManager.EXTRA_PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME, componentName)
+            putExtra(DevicePolicyManager.EXTRA_PROVISIONING_DEVICE_ADMIN_PACKAGE_NAME, context.packageName)
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 putExtra(DevicePolicyManager.EXTRA_PROVISIONING_SKIP_ENCRYPTION, true)
             }

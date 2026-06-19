@@ -298,6 +298,7 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
     val systemProfiles by viewModel.systemProfiles.collectAsState()
     val systemNotifications by viewModel.systemNotifications.collectAsState()
     val isCurrentlyWorkProfile by viewModel.isCurrentlyWorkProfile.collectAsState()
+    val isVirtualSandboxActive by viewModel.isVirtualSandboxActive.collectAsState()
     val diagnosticsInfo by viewModel.diagnosticsInfo.collectAsState()
 
     val isVpnAlwaysOn by viewModel.isVpnAlwaysOn.collectAsState()
@@ -364,6 +365,23 @@ fun EnterpriseWorkspaceTab(viewModel: ProfileViewModel) {
                             style = MaterialTheme.typography.bodySmall,
                             color = if (isCurrentlyWorkProfile) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                         )
+                    }
+                    if (isVirtualSandboxActive) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = {
+                                viewModel.toggleVirtualSandboxMode(!isCurrentlyWorkProfile)
+                                val text = if (!isCurrentlyWorkProfile) "Switched to Secure Work Workspace Partition" else "Returned to Personal Primary Workspace"
+                                Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.testTag("workspace_quick_switch")
+                        ) {
+                            Icon(
+                                imageVector = if (isCurrentlyWorkProfile) Icons.Default.ExitToApp else Icons.Default.BusinessCenter,
+                                contentDescription = "Switch Workspace Container",
+                                tint = if (isCurrentlyWorkProfile) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
                     }
                 }
             }
